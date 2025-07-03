@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeCoding 회의실 예약 시스템</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        #calendar {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+        }
+        .btn-primary {
+            background-color: #4f46e5;
+            border-color: #4f46e5;
+        }
+        .btn-primary:hover {
+            background-color: #4338ca;
+            border-color: #4338ca;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .meeting-room-card {
+            border-left: 4px solid #4f46e5;
+        }
+        .meeting-room-card.available {
+            border-left-color: #28a745;
+        }
+        .meeting-room-card.occupied {
+            border-left-color: #dc3545;
+        }
+        .time-slot {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .time-slot:hover {
+            background: #bbdefb;
+        }
+        
+        /* 캘린더 hover 효과 */
+        .fc-timegrid-slot:hover {
+            background-color: #e3f2fd !important;
+            cursor: pointer;
+        }
+        
+        .fc-timegrid-slot.fc-slot-selected {
+            background-color: #bbdefb !important;
+        }
+        
+        /* 시간 선택 영역 스타일 */
+        .fc-highlight {
+            background-color: #bbdefb !important;
+            opacity: 0.7;
+        }
+        
+        /* 선택 영역 제거 시 스타일 초기화 */
+        .fc-timegrid-slot:not(.fc-highlight) {
+            background-color: transparent !important;
+        }
+
+        /* 모든 FullCalendar 이벤트를 파란색 배경, 흰색 글씨로 */
+        .fc-event, .fc-event-dot {
+            background-color: #2196f3 !important;
+            color: #fff !important;
+            border: none !important;
+            font-weight: bold;
+        }
+        .fc-event .fc-event-title {
+            color: #fff !important;
+        }
+
+        /* FullCalendar 월/주/일 뷰에서 이벤트 앞의 dot(●) 아이콘 제거 */
+        .fc-daygrid-event-dot {
+            display: none !important;
+        }
+        .meeting-room-card.inactive {
+            background: #f8f9fa !important;
+            border-left-color: #bbb !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold text-primary" href="/">VibeCoding 회의실 예약</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showCalendar()">캘린더</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showMeetingRooms()">회의실 목록</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showMyMeetings()">내 회의</a>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-primary btn-sm ms-2" onclick="showCreateMeeting()">회의 예약</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-success btn-sm ms-2" onclick="showCreateMeetingRoom()">회의실 등록</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-outline-secondary btn-sm ms-2" id="logoutBtn" onclick="logout()">로그아웃</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Dashboard Section -->
+        <div id="dashboardSection" class="content-section active">
+            <div class="row mb-4" id="dashboardCards">
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">오늘 회의</h5>
+                            <h2 class="text-primary" id="todayMeetings">0</h2>
+                            <p class="text-muted mb-0">건</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">이번주 회의</h5>
+                            <h2 class="text-info" id="weekMeetings">0</h2>
+                            <p class="text-muted mb-0">건</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">사용 가능 회의실</h5>
+                            <h2 class="text-success" id="availableRooms">0</h2>
+                            <p class="text-muted mb-0">개</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">팀원 수</h5>
+                            <h2 class="text-warning" id="teamMembers">0</h2>
+                            <p class="text-muted mb-0">명</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">빠른 작업</h5>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button class="btn btn-primary" onclick="showCreateMeeting()">
+                                    <i class="bi bi-plus-circle"></i> 새 회의 예약
+                                </button>
+                                <button class="btn btn-outline-primary" onclick="showFindTime()">
+                                    <i class="bi bi-clock"></i> 가능한 시간 찾기
+                                </button>
+                                <button class="btn btn-outline-success" onclick="showMeetingRooms()">
+                                    <i class="bi bi-building"></i> 회의실 현황
+                                </button>
+                                <button class="btn btn-outline-info" onclick="showCalendar()">
+                                    <i class="bi bi-calendar3"></i> 캘린더 보기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendar -->
+            <div id="calendar"></div>
+        </div>
+
+        <!-- Calendar Section -->
+        <div id="calendarSection" class="content-section">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3>회의 캘린더</h3>
+                <button class="btn btn-outline-secondary" onclick="showDashboard()">대시보드로 돌아가기</button>
+            </div>
+            <div id="fullCalendar"></div>
+        </div>
+
+        <!-- Meeting Rooms Section -->
+        <div id="meetingRoomsSection" class="content-section">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3>회의실 현황</h3>
+                <button class="btn btn-outline-secondary" onclick="showDashboard()">대시보드로 돌아가기</button>
+            </div>
+            <div id="meetingRoomsList" class="row">
+                <!-- Meeting rooms will be loaded here -->
+            </div>
+        </div>
+
+        <!-- My Meetings Section -->
+        <div id="myMeetingsSection" class="content-section">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3>내 회의</h3>
+                <button class="btn btn-outline-secondary" onclick="showDashboard()">대시보드로 돌아가기</button>
+            </div>
+            <div id="myMeetingsList">
+                <!-- My meetings will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Meeting Creation Modal -->
+    <div class="modal fade" id="createMeetingModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">새 회의 예약</h5>
+                    <button type="button" class="btn-close" onclick="cancelMeetingModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createMeetingForm">
+                        <div class="mb-3">
+                            <label for="meetingTitle" class="form-label">회의 제목</label>
+                            <input type="text" class="form-control" id="meetingTitle" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="meetingDescription" class="form-label">회의 설명</label>
+                            <textarea class="form-control" id="meetingDescription" rows="3"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="startTime" class="form-label">시작 시간</label>
+                                <input type="datetime-local" class="form-control" id="startTime" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="endTime" class="form-label">종료 시간</label>
+                                <input type="datetime-local" class="form-control" id="endTime" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="participants" class="form-label">참석자</label>
+                            <select multiple class="form-control" id="participants" required>
+                                <!-- Options will be loaded dynamically -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="meetingRoom" class="form-label">회의실</label>
+                            <select class="form-control" id="meetingRoom">
+                                <option value="">회의실 선택 (선택사항)</option>
+                                <!-- Options will be loaded dynamically -->
+                            </select>
+                        </div>
+                        <div id="roomEquipmentInfo" class="mb-3"></div>
+                        <div class="mb-3">
+                            <label for="meetingType" class="form-label">회의 유형</label>
+                            <select class="form-control" id="meetingType">
+                                <option value="IN_PERSON">대면 회의</option>
+                                <option value="ONLINE">온라인 회의</option>
+                                <option value="HYBRID">하이브리드</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="meetingLinkDiv" style="display: none;">
+                            <label for="meetingLink" class="form-label">회의 링크</label>
+                            <input type="url" class="form-control" id="meetingLink">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="cancelMeetingModal()">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="createMeeting()">회의 생성</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Find Available Time Modal -->
+    <div class="modal fade" id="findTimeModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">가능한 시간 찾기</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="findTimeForm">
+                        <div class="mb-3">
+                            <label for="findParticipants" class="form-label">참석자</label>
+                            <select multiple class="form-control" id="findParticipants" required>
+                                <!-- Options will be loaded dynamically -->
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="findStartDate" class="form-label">검색 시작일</label>
+                                <input type="date" class="form-control" id="findStartDate" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="findEndDate" class="form-label">검색 종료일</label>
+                                <input type="date" class="form-control" id="findEndDate" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="duration" class="form-label">회의 시간 (분)</label>
+                            <input type="number" class="form-control" id="duration" min="15" max="480" value="60" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="preferredTime" class="form-label">선호 시간대</label>
+                            <select class="form-control" id="preferredTime">
+                                <option value="">상관없음</option>
+                                <option value="MORNING">오전</option>
+                                <option value="AFTERNOON">오후</option>
+                            </select>
+                        </div>
+                    </form>
+                    <button type="button" class="btn btn-primary" onclick="findAvailableTimes()">가능한 시간 찾기</button>
+                    
+                    <div id="availableTimesResult" class="mt-4" style="display: none;">
+                        <h6>추천 시간대</h6>
+                        <div id="timeSlotsList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 회의실 등록 모달 -->
+    <div class="modal fade" id="createMeetingRoomModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">회의실 등록</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createMeetingRoomForm">
+                        <div class="mb-3">
+                            <label for="roomName" class="form-label">회의실 이름</label>
+                            <input type="text" class="form-control" id="roomName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="roomDescription" class="form-label">위치</label>
+                            <input type="text" class="form-control" id="roomDescription">
+                        </div>
+                        <div class="mb-3">
+                            <label for="roomCapacity" class="form-label">수용 인원</label>
+                            <input type="number" class="form-control" id="roomCapacity" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="roomEquipment" class="form-label">장비(쉼표로 구분)</label>
+                            <input type="text" class="form-control" id="roomEquipment">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="createMeetingRoom()">등록</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meeting Detail Modal -->
+    <div class="modal fade" id="meetingDetailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="meetingDetailTitle">회의 상세 정보</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="meetingDetailBody">
+                    <!-- 내용 동적 생성 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancel Meeting Modal -->
+    <div class="modal fade" id="cancelMeetingModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">회의 취소 확인</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>정말로 이 회의를 취소하시겠습니까?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">아니오</button>
+                    <button type="button" class="btn btn-danger" id="confirmCancelBtn">네, 취소합니다</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <script>
+        // Global variables
+        let calendar;
+        let currentUser = null;
+        let meetingToCancel = null;
+        let lastSuggestions = [];
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (!(await checkLogin())) return;
+            initializeApp();
+        });
+
+        function initializeApp() {
+            loadDashboardData();
+            initializeCalendar();
+            loadUsers();
+            loadMeetingRooms();
+            startMeetingRoomsAutoRefresh();
+            setupModalEventListeners();
+        }
+
+        // Navigation functions
+        function showDashboard() {
+            hideAllSections();
+            document.getElementById('dashboardSection').classList.add('active');
+            loadDashboardData();
+        }
+
+        function showCalendar() {
+            hideAllSections();
+            document.getElementById('calendarSection').classList.add('active');
+            initializeFullCalendar();
+        }
+
+        function showMeetingRooms() {
+            hideAllSections();
+            document.getElementById('meetingRoomsSection').classList.add('active');
+            loadMeetingRoomsData();
+        }
+
+        function showMyMeetings() {
+            hideAllSections();
+            document.getElementById('myMeetingsSection').classList.add('active');
+            loadMyMeetings();
+        }
+
+        function hideAllSections() {
+            const sections = document.querySelectorAll('.content-section');
+            sections.forEach(section => section.classList.remove('active'));
+        }
+
+        // Dashboard functions
+        function loadDashboardData() {
+            // Load today's meetings count
+            axios.get('/api/meetings/today')
+                .then(response => {
+                    document.getElementById('todayMeetings').textContent = response.data.length;
+                })
+                .catch(error => console.error('Error loading today meetings:', error));
+
+            // Load week's meetings count
+            axios.get('/api/meetings/week')
+                .then(response => {
+                    document.getElementById('weekMeetings').textContent = response.data.length;
+                })
+                .catch(error => console.error('Error loading week meetings:', error));
+
+            // Load available rooms count
+            axios.get('/api/meeting-rooms/available')
+                .then(response => {
+                    document.getElementById('availableRooms').textContent = response.data.length;
+                })
+                .catch(error => console.error('Error loading available rooms:', error));
+
+            // Load team members count
+            axios.get('/api/users/count')
+                .then(response => {
+                    document.getElementById('teamMembers').textContent = response.data;
+                })
+                .catch(error => console.error('Error loading team members:', error));
+        }
+
+        // Calendar functions
+        function initializeCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            if (!calendarEl) return;
+
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'ko',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                slotDuration: '00:30:00', // 30분 단위
+                slotMinTime: '00:00:00', // 오전 12시
+                slotMaxTime: '24:00:00', // 밤 12시
+                events: function(fetchInfo, successCallback, failureCallback) {
+                    axios.get('/api/meetings/calendar').then(res => {
+                        const events = res.data.map(ev => {
+                            if (ev.room && !ev.room.equipmentList) {
+                                ev.room.equipmentList = [];
+                            }
+                            return {
+                                ...ev,
+                                title: `[${ev.room && ev.room.name ? ev.room.name : '미지정'}] ${ev.title}`,
+                                start: ev.startTime,
+                                end: ev.endTime
+                            };
+                        });
+                        successCallback(events);
+                    }).catch(failureCallback);
+                },
+                eventClick: function(info) {
+                    showMeetingDetails(info.event);
+                },
+                select: function(info) {
+                    if (calendar.view.type === 'timeGridWeek' || calendar.view.type === 'timeGridDay') {
+                        showCreateMeetingWithTime(info.start, info.end);
+                    } else if (calendar.view.type === 'dayGridMonth') {
+                        // 클릭/드래그 모두 여기서 처리
+                        // 하루만 선택: 현재 시/분/초 ~ +1시간
+                        // 여러 날: 00:00 ~ 마지막날 23:59
+                        const startDate = new Date(info.start);
+                        const endDate = new Date(info.end);
+                        endDate.setDate(endDate.getDate() - 1);
+                        if (
+                            startDate.getFullYear() === endDate.getFullYear() &&
+                            startDate.getMonth() === endDate.getMonth() &&
+                            startDate.getDate() === endDate.getDate()
+                        ) {
+                            // 하루만 선택: 현재 시/분/초 ~ +1시간
+                            const now = new Date();
+                            startDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
+                            const endTime = new Date(startDate.getTime() + 60 * 60 * 1000);
+                            showCreateMeetingWithTime(startDate, endTime);
+                        } else {
+                            // 여러 날: 00:00 ~ 마지막날 23:59
+                            startDate.setHours(0, 0, 0, 0);
+                            endDate.setHours(23, 59, 0, 0);
+                            showCreateMeetingWithTime(startDate, endDate);
+                        }
+                    }
+                },
+                selectable: true,
+                selectMirror: true,
+                unselectAuto: true
+            });
+            calendar.render();
+            
+            // hover 효과 추가
+            addCalendarHoverEffects(calendar);
+        }
+
+        function initializeFullCalendar() {
+            const calendarEl = document.getElementById('fullCalendar');
+            if (!calendarEl) return;
+
+            const fullCalendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'ko',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+                },
+                slotDuration: '00:30:00', // 30분 단위
+                slotMinTime: '00:00:00', // 오전 12시
+                slotMaxTime: '24:00:00', // 밤 12시
+                events: function(fetchInfo, successCallback, failureCallback) {
+                    axios.get('/api/meetings/calendar').then(res => {
+                        const events = res.data.map(ev => {
+                            if (ev.room && !ev.room.equipmentList) {
+                                ev.room.equipmentList = [];
+                            }
+                            return {
+                                ...ev,
+                                title: `[${ev.room && ev.room.name ? ev.room.name : '미지정'}] ${ev.title}`,
+                                start: ev.startTime,
+                                end: ev.endTime
+                            };
+                        });
+                        successCallback(events);
+                    }).catch(failureCallback);
+                },
+                eventClick: function(info) {
+                    showMeetingDetails(info.event);
+                },
+                select: function(info) {
+                    if (fullCalendar.view.type === 'timeGridWeek' || fullCalendar.view.type === 'timeGridDay') {
+                        showCreateMeetingWithTime(info.start, info.end);
+                    } else if (fullCalendar.view.type === 'dayGridMonth') {
+                        const startDate = new Date(info.start);
+                        const endDate = new Date(info.end);
+                        endDate.setDate(endDate.getDate() - 1);
+                        if (
+                            startDate.getFullYear() === endDate.getFullYear() &&
+                            startDate.getMonth() === endDate.getMonth() &&
+                            startDate.getDate() === endDate.getDate()
+                        ) {
+                            const now = new Date();
+                            startDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
+                            const endTime = new Date(startDate.getTime() + 60 * 60 * 1000);
+                            showCreateMeetingWithTime(startDate, endTime);
+                        } else {
+                            startDate.setHours(0, 0, 0, 0);
+                            endDate.setHours(23, 59, 0, 0);
+                            showCreateMeetingWithTime(startDate, endDate);
+                        }
+                    }
+                },
+                selectable: true,
+                selectMirror: true,
+                unselectAuto: true
+            });
+            fullCalendar.render();
+            
+            // hover 효과 추가
+            addCalendarHoverEffects(fullCalendar);
+        }
+
+        // Meeting creation functions
+        function showCreateMeeting(dateStr = null) {
+            // 입력값 초기화
+            document.getElementById('createMeetingForm').reset();
+            document.getElementById('meetingLinkDiv').style.display = 'none';
+
+            if (dateStr) {
+                const startTime = document.getElementById('startTime');
+                const endTime = document.getElementById('endTime');
+                const date = new Date(dateStr);
+                const endDate = new Date(date.getTime() + 60 * 60 * 1000); // 1 hour later
+                
+                // 로컬 시간으로 변환
+                const startTimeStr = date.getFullYear() + '-' + 
+                    String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                    String(date.getDate()).padStart(2, '0') + 'T' + 
+                    String(date.getHours()).padStart(2, '0') + ':' + 
+                    String(date.getMinutes()).padStart(2, '0');
+                
+                const endTimeStr = endDate.getFullYear() + '-' + 
+                    String(endDate.getMonth() + 1).padStart(2, '0') + '-' + 
+                    String(endDate.getDate()).padStart(2, '0') + 'T' + 
+                    String(endDate.getHours()).padStart(2, '0') + ':' + 
+                    String(endDate.getMinutes()).padStart(2, '0');
+                
+                startTime.value = startTimeStr;
+                endTime.value = endTimeStr;
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('createMeetingModal'), {
+                backdrop: true,
+                keyboard: true
+            });
+            modal.show();
+        }
+
+        function showCreateMeetingWithTime(start, end) {
+            // 입력값 초기화
+            document.getElementById('createMeetingForm').reset();
+            document.getElementById('meetingLinkDiv').style.display = 'none';
+
+            const startTime = document.getElementById('startTime');
+            const endTime = document.getElementById('endTime');
+            
+            // 로컬 시간으로 변환
+            const startTimeStr = start.getFullYear() + '-' + 
+                String(start.getMonth() + 1).padStart(2, '0') + '-' + 
+                String(start.getDate()).padStart(2, '0') + 'T' + 
+                String(start.getHours()).padStart(2, '0') + ':' + 
+                String(start.getMinutes()).padStart(2, '0');
+            
+            const endTimeStr = end.getFullYear() + '-' + 
+                String(end.getMonth() + 1).padStart(2, '0') + '-' + 
+                String(end.getDate()).padStart(2, '0') + 'T' + 
+                String(end.getHours()).padStart(2, '0') + ':' + 
+                String(end.getMinutes()).padStart(2, '0');
+            
+            startTime.value = startTimeStr;
+            endTime.value = endTimeStr;
+            
+            const modal = new bootstrap.Modal(document.getElementById('createMeetingModal'), {
+                backdrop: true,
+                keyboard: true
+            });
+            modal.show();
+        }
+
+        function addCalendarHoverEffects(calendar) {
+            // 캘린더가 렌더링된 후에 hover 효과 추가
+            setTimeout(() => {
+                const timeSlots = document.querySelectorAll('.fc-timegrid-slot');
+                
+                timeSlots.forEach(slot => {
+                    slot.addEventListener('mouseenter', function() {
+                        this.style.backgroundColor = '#e3f2fd';
+                        this.style.cursor = 'pointer';
+                    });
+                    
+                    slot.addEventListener('mouseleave', function() {
+                        this.style.backgroundColor = '';
+                        this.style.cursor = '';
+                    });
+                });
+            }, 1000);
+        }
+
+        function setupModalEventListeners() {
+            // 회의 예약 모달의 이벤트 리스너 설정
+            const meetingModal = document.getElementById('createMeetingModal');
+            
+            // 모달이 닫힐 때 캘린더 선택 영역 초기화
+            meetingModal.addEventListener('hidden.bs.modal', function() {
+                if (calendar) {
+                    calendar.unselect();
+                }
+            });
+        }
+
+        function cancelMeetingModal() {
+            // 모달 닫기
+            const modal=bootstrap.Modal.getInstance(document.getElementById('createMeetingModal'));
+            modal.hide();
+        }
+
+        function createMeeting() {
+            const roomIdValue = document.getElementById('meetingRoom').value;
+            const formData = {
+                title: document.getElementById('meetingTitle').value,
+                description: document.getElementById('meetingDescription').value,
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                participants: Array.from(document.getElementById('participants').selectedOptions).map(option => option.value),
+                roomId: roomIdValue ? Number(roomIdValue) : null,
+                meetingType: document.getElementById('meetingType').value,
+                meetingLink: document.getElementById('meetingLink').value,
+                organizerId: currentUser ? currentUser.id : null
+            };
+            // 수정 모드 분기
+            const editId = document.getElementById('createMeetingForm').dataset.editId;
+            if (editId) {
+                axios.put(`/api/meetings/${editId}`, formData)
+                    .then(response => {
+                        showToast('회의가 성공적으로 수정되었습니다.', 'success');
+                        bootstrap.Modal.getInstance(document.getElementById('createMeetingModal')).hide();
+                        if (calendar) {
+                            calendar.unselect();
+                            calendar.refetchEvents();
+                        }
+                        loadDashboardData();
+                        if (document.getElementById('meetingRoomsSection').classList.contains('active')) {
+                            loadMeetingRoomsData();
+                        }
+                        // 수정 모드 해제
+                        delete document.getElementById('createMeetingForm').dataset.editId;
+                    })
+                    .catch(error => {
+                        showToast('회의 수정 중 오류가 발생했습니다: ' + error.response.data.message, 'danger');
+                    });
+                return;
+            }
+            // 회의실을 선택했고, 시간도 입력된 경우에만 중복 체크
+            if (formData.roomId && formData.startTime && formData.endTime) {
+                axios.get(`/api/meetings/conflicts?roomId=${formData.roomId}&startTime=${encodeURIComponent(formData.startTime)}&endTime=${encodeURIComponent(formData.endTime)}`)
+                    .then(res => {
+                        if (res.data && res.data.length > 0) {
+                            showToast('해당 시간에 회의실이 이미 예약되어 있습니다.', 'danger');
+                            return;
+                        }
+                        actuallyCreateMeeting(formData);
+                    })
+                    .catch(() => actuallyCreateMeeting(formData));
+            } else {
+                actuallyCreateMeeting(formData);
+            }
+        }
+
+        function actuallyCreateMeeting(formData) {
+            axios.post('/api/meetings', formData)
+                .then(response => {
+                    showToast('회의가 성공적으로 생성되었습니다.', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('createMeetingModal')).hide();
+                    
+                    // 캘린더 선택 영역 초기화
+                    if (calendar) {
+                        calendar.unselect();
+                        calendar.refetchEvents();
+                    }
+                    
+                    loadDashboardData();
+                    
+                    // 회의실 현황 화면이 활성화되어 있으면 새로고침
+                    if (document.getElementById('meetingRoomsSection').classList.contains('active')) {
+                        loadMeetingRoomsData();
+                    }
+                })
+                .catch(error => {
+                    showToast('회의 생성 중 오류가 발생했습니다: ' + error.response.data.message, 'danger');
+                });
+        }
+
+        // Meeting rooms functions
+        function loadMeetingRoomsData() {
+            axios.get('/api/meeting-rooms')
+                .then(response => {
+                    const container = document.getElementById('meetingRoomsList');
+                    container.innerHTML = '';
+                    
+                    response.data.forEach(room => {
+                        const roomCard = createMeetingRoomCard(room);
+                        container.appendChild(roomCard);
+                    });
+                })
+                .catch(error => console.error('Error loading meeting rooms:', error));
+        }
+
+        // 회의실 현황 실시간 업데이트 (30초마다)
+        function startMeetingRoomsAutoRefresh() {
+            setInterval(() => {
+                if (document.getElementById('meetingRoomsSection').classList.contains('active')) {
+                    loadMeetingRoomsData();
+                }
+            }, 30000); // 30초마다 업데이트
+        }
+
+        function createMeetingRoomCard(room) {
+            // ADMIN이 아니고 비활성화된 회의실이면 카드 자체를 생성하지 않음
+            if ((!currentUser || currentUser.role !== 'ADMIN') && !room.isAvailable) {
+                return document.createElement('div');
+            }
+            const col = document.createElement('div');
+            col.className = 'col-md-6 col-lg-4 mb-3';
+            // 상태 텍스트 및 색상 구분
+            let statusText = '';
+            let statusColor = '';
+            if (!room.isAvailable) {
+                statusText = '비활성화됨';
+                statusColor = 'text-secondary';
+            } else if (room.reservable) {
+                statusText = '예약 가능';
+                statusColor = 'text-success';
+            } else {
+                statusText = '현재 사용 중';
+                statusColor = 'text-danger';
+            }
+            const currentTime = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+            const inactiveStyle = (!room.isAvailable ? 'opacity:0.5; filter: grayscale(1);' : '');
+            col.innerHTML = `
+                <div class="card meeting-room-card ${!room.isAvailable ? 'inactive' : (room.reservable ? 'available' : 'occupied')}" style="${inactiveStyle}">
+                    <div class="card-body">
+                        <h5 class="card-title">${room.name}</h5>
+                        <p class="card-text"><small class="text-muted">위치: ${room.location || '-'}</small></p>
+                        <p class="card-text"><small class="text-muted">수용 인원: ${room.capacity}명</small></p>
+                        <p class="card-text"><small class="text-muted">장비: ${room.equipmentList && room.equipmentList.length > 0 ? room.equipmentList.join(', ') : '없음'}</small></p>
+                        <p class="card-text"><strong class="${statusColor}">${statusText}</strong></p>
+                        <p class="card-text"><small class="text-muted">현재 시간: ${currentTime}</small></p>
+                        ${room.isAvailable && room.reservable ? 
+                            `<button class="btn btn-primary btn-sm" onclick="reserveRoom(${room.id})">예약하기</button>` : 
+                            (room.isAvailable && !room.reservable ? `<button class="btn btn-secondary btn-sm" disabled>현재 사용 중</button>` : `<button class="btn btn-secondary btn-sm" disabled>예약 불가</button>`)
+                        }
+                        ${currentUser && currentUser.role === 'ADMIN' ?
+                            `<button class="btn btn-outline-${room.isAvailable ? 'warning' : 'success'} btn-sm ms-2" onclick="toggleRoomActive(${room.id}, ${!room.isAvailable})">${room.isAvailable ? '비활성화' : '활성화'}</button>`
+                            : ''}
+                    </div>
+                </div>
+            `;
+            return col;
+        }
+
+        // My meetings functions
+        function loadMyMeetings() {
+            if (!currentUser) return;
+            axios.get(`/api/meetings/my?userId=${currentUser.id}`)
+                .then(response => {
+                    const container = document.getElementById('myMeetingsList');
+                    container.innerHTML = '';
+                    if (response.data.length === 0) {
+                        container.innerHTML = '<div class="alert alert-info">예약된 회의가 없습니다.</div>';
+                        return;
+                    }
+                    response.data.forEach(meeting => {
+                        const meetingCard = createMyMeetingCard(meeting);
+                        container.appendChild(meetingCard);
+                    });
+                })
+                .catch(error => console.error('Error loading my meetings:', error));
+        }
+
+        function createMyMeetingCard(meeting) {
+            const div = document.createElement('div');
+            div.className = 'card mb-3';
+            
+            const startTime = new Date(meeting.startTime).toLocaleString('ko-KR');
+            const endTime = new Date(meeting.endTime).toLocaleString('ko-KR');
+            
+            div.innerHTML = `
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="card-title">${meeting.title}</h5>
+                            <p class="card-text">${meeting.description || '설명 없음'}</p>
+                            <p class="card-text"><small class="text-muted">시작: ${startTime}</small></p>
+                            <p class="card-text"><small class="text-muted">종료: ${endTime}</small></p>
+                            <p class="card-text"><small class="text-muted">참석자: ${meeting.participants.map(p => p.name).join(', ')}</small></p>
+                            ${meeting.room ? `<p class="card-text"><small class="text-muted">회의실: ${meeting.room.name}</small></p>` : ''}
+                        </div>
+                        <div>
+                            <button class="btn btn-outline-danger btn-sm" onclick="cancelMeeting(${meeting.id})">취소</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return div;
+        }
+
+        // Find available time functions
+        function showFindTime() {
+            const modal = new bootstrap.Modal(document.getElementById('findTimeModal'));
+            // 입력값 초기화
+            const today = new Date();
+            const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+            document.getElementById('findStartDate').value = today.toISOString().split('T')[0];
+            document.getElementById('findEndDate').value = nextWeek.toISOString().split('T')[0];
+            document.getElementById('duration').value = 60;
+            document.getElementById('preferredTime').value = '';
+            document.getElementById('findParticipants').selectedIndex = -1;
+            document.getElementById('availableTimesResult').style.display = 'none';
+            document.getElementById('timeSlotsList').innerHTML = '';
+            lastSuggestions = [];
+            modal.show();
+        }
+
+        // 선호시간대 변경 시 필터링
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('preferredTime').addEventListener('change', function() {
+                if (lastSuggestions.length > 0) {
+                    displayAvailableTimes(lastSuggestions);
+                }
+            });
+        });
+
+        function findAvailableTimes() {
+            const participants = Array.from(document.getElementById('findParticipants').selectedOptions).map(option => option.value);
+            if (participants.length === 0) {
+                showToast('참석자를 선택해주세요.', 'warning');
+                return;
+            }
+            const preferred = document.getElementById('preferredTime').value;
+            if (preferred !== '' && preferred !== 'MORNING' && preferred !== 'AFTERNOON') {
+                document.getElementById('availableTimesResult').style.display = 'block';
+                document.getElementById('timeSlotsList').innerHTML = '<div class="alert alert-warning">해당 조건에 맞는 가능한 시간이 없습니다.</div>';
+                return;
+            }
+            const formData = {
+                participantIds: participants,
+                startDate: document.getElementById('findStartDate').value,
+                endDate: document.getElementById('findEndDate').value,
+                durationMinutes: parseInt(document.getElementById('duration').value),
+                preferredTime: preferred
+            };
+            // 로딩 표시
+            const resultDiv = document.getElementById('availableTimesResult');
+            const timeSlotsList = document.getElementById('timeSlotsList');
+            timeSlotsList.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            resultDiv.style.display = 'block';
+            axios.post('/api/meetings/suggestions', formData)
+                .then(response => {
+                    lastSuggestions = response.data;
+                    displayAvailableTimes(response.data);
+                })
+                .catch(error => {
+                    console.error('Error finding available times:', error);
+                    timeSlotsList.innerHTML = '<div class="alert alert-danger">가능한 시간을 찾는 중 오류가 발생했습니다.</div>';
+                    showToast('가능한 시간을 찾는 중 오류가 발생했습니다.', 'danger');
+                });
+        }
+
+        function displayAvailableTimes(suggestions) {
+            const container = document.getElementById('timeSlotsList');
+            const resultDiv = document.getElementById('availableTimesResult');
+            const preferred = document.getElementById('preferredTime').value;
+            let filtered = suggestions;
+            if (preferred === 'MORNING' || preferred === 'AFTERNOON') {
+                filtered = suggestions.filter(s => s.preferredTime === preferred);
+            } else if (preferred === '') {
+                // 상관없음: 전체(오전+오후)
+                filtered = suggestions.filter(s => s.preferredTime === 'MORNING' || s.preferredTime === 'AFTERNOON');
+            } else {
+                container.innerHTML = '<div class="alert alert-warning">해당 조건에 맞는 가능한 시간이 없습니다.</div>';
+                resultDiv.style.display = 'block';
+                return;
+            }
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="alert alert-warning">해당 조건에 맞는 가능한 시간이 없습니다.</div>';
+            } else {
+                container.innerHTML = '';
+                filtered.forEach((suggestion, index) => {
+                    const timeSlot = document.createElement('div');
+                    timeSlot.className = 'time-slot mb-3 p-3 border rounded';
+                    const startTime = new Date(suggestion.startTime).toLocaleString('ko-KR', {
+                        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+                    });
+                    const endTime = new Date(suggestion.endTime).toLocaleString('ko-KR', {
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                    const roomInfo = suggestion.room ? 
+                        `<div class="text-muted"><i class="fas fa-building"></i> ${suggestion.room.name} (${suggestion.room.capacity}명 수용)</div>` : 
+                        '<div class="text-muted"><i class="fas fa-video"></i> 온라인 회의</div>';
+                    const scoreBadge = suggestion.score > 0 ? 
+                        `<span class="badge bg-success ms-2">추천도: ${Math.round(suggestion.score)}</span>` : '';
+                    timeSlot.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="fw-bold">
+                                    ${startTime} - ${endTime}
+                                    ${scoreBadge}
+                                </div>
+                                ${roomInfo}
+                                ${suggestion.room && suggestion.room.equipment ? 
+                                    `<div class="text-muted small"><i class="fas fa-tools"></i> ${suggestion.room.equipment}</div>` : ''
+                                }
+                            </div>
+                            <button class="btn btn-primary btn-sm" onclick="selectTimeSlot('${suggestion.startTime}', '${suggestion.endTime}', ${suggestion.room ? suggestion.room.id : 'null'})">
+                                <i class="fas fa-check"></i> 선택
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(timeSlot);
+                });
+            }
+            resultDiv.style.display = 'block';
+        }
+
+        function selectTimeSlot(startTime, endTime, meetingRoomId) {
+            bootstrap.Modal.getInstance(document.getElementById('findTimeModal')).hide();
+            showCreateMeeting();
+            
+            // ISO 문자열을 datetime-local 형식으로 변환
+            const startDate = new Date(startTime);
+            const endDate = new Date(endTime);
+            
+            const startTimeStr = startDate.toISOString().slice(0, 16);
+            const endTimeStr = endDate.toISOString().slice(0, 16);
+            
+            document.getElementById('startTime').value = startTimeStr;
+            document.getElementById('endTime').value = endTimeStr;
+            
+            if (meetingRoomId && meetingRoomId !== 'null') {
+                document.getElementById('meetingRoom').value = meetingRoomId;
+            }
+            
+            showToast('선택한 시간이 회의 예약 폼에 적용되었습니다.', 'success');
+        }
+
+        // Utility functions
+        function loadUsers() {
+            axios.get('/api/users')
+                .then(response => {
+                    const participantsSelect = document.getElementById('participants');
+                    const findParticipantsSelect = document.getElementById('findParticipants');
+                    
+                    participantsSelect.innerHTML = '';
+                    findParticipantsSelect.innerHTML = '';
+                    
+                    response.data.forEach(user => {
+                        const option = new Option(user.name, user.id);
+                        const findOption = new Option(user.name, user.id);
+                        
+                        participantsSelect.add(option);
+                        findParticipantsSelect.add(findOption);
+                    });
+                })
+                .catch(error => console.error('Error loading users:', error));
+        }
+
+        function loadMeetingRooms() {
+            axios.get('/api/meeting-rooms')
+                .then(response => {
+                    const meetingRoomSelect = document.getElementById('meetingRoom');
+                    meetingRoomSelect.innerHTML = '<option value="">회의실 선택 (선택사항)</option>';
+                    
+                    response.data.forEach(room => {
+                        if (room.isAvailable) {
+                            const option = new Option(room.name, room.id);
+                            meetingRoomSelect.add(option);
+                        }
+                    });
+                })
+                .catch(error => console.error('Error loading meeting rooms:', error));
+        }
+
+        function cancelMeeting(meetingId) {
+            meetingToCancel = meetingId;
+            const modal = new bootstrap.Modal(document.getElementById('cancelMeetingModal'));
+            modal.show();
+        }
+
+        function reserveRoom(roomId) {
+            showCreateMeeting();
+            document.getElementById('meetingRoom').value = roomId;
+            
+            // 현재 시간을 시작 시간으로 설정
+            const now = new Date();
+            const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000); // 1시간 후
+            
+            // 로컬 시간을 datetime-local 형식으로 변환
+            const startTimeStr = now.getFullYear() + '-' + 
+                String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                String(now.getDate()).padStart(2, '0') + 'T' + 
+                String(now.getHours()).padStart(2, '0') + ':' + 
+                String(now.getMinutes()).padStart(2, '0');
+            
+            const endTimeStr = oneHourLater.getFullYear() + '-' + 
+                String(oneHourLater.getMonth() + 1).padStart(2, '0') + '-' + 
+                String(oneHourLater.getDate()).padStart(2, '0') + 'T' + 
+                String(oneHourLater.getHours()).padStart(2, '0') + ':' + 
+                String(oneHourLater.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('startTime').value = startTimeStr;
+            document.getElementById('endTime').value = endTimeStr;
+        }
+
+        // 회의 유형 한글 변환 함수
+        function getMeetingTypeLabel(type) {
+            switch(type) {
+                case 'IN_PERSON': return '대면 회의';
+                case 'ONLINE': return '온라인 회의';
+                case 'HYBRID': return '하이브리드';
+                default: return type;
+            }
+        }
+
+        function showMeetingDetails(event) {
+            const modal = new bootstrap.Modal(document.getElementById('meetingDetailModal'));
+            let html = `<strong>제목:</strong> ${event.title}<br>`;
+            if (event.extendedProps) {
+                html += `<strong>회의실:</strong> ${(event.extendedProps.room && event.extendedProps.room.name) ? event.extendedProps.room.name : '미지정'}<br>`;
+                if (event.extendedProps.room && event.extendedProps.room.equipmentList && event.extendedProps.room.equipmentList.length > 0) {
+                    html += `<strong>장비:</strong> ${event.extendedProps.room.equipmentList.join(', ')}<br>`;
+                } else if (event.extendedProps.room && event.extendedProps.room.equipment) {
+                    html += `<strong>장비:</strong> ${event.extendedProps.room.equipment}<br>`;
+                } else {
+                    html += `<strong>장비:</strong> 없음<br>`;
+                }
+                if (event.extendedProps.organizerName) {
+                    html += `<strong>주최자:</strong> ${event.extendedProps.organizerName}<br>`;
+                }
+                if (event.extendedProps.participants) {
+                    html += `<strong>참석자:</strong> ${event.extendedProps.participants.map(p => p.name).join(', ')}<br>`;
+                }
+                if (event.extendedProps.type) {
+                    html += `<strong>회의 유형:</strong> ${getMeetingTypeLabel(event.extendedProps.type)}<br>`;
+                }
+                if (event.extendedProps.description) {
+                    html += `<strong>설명:</strong> ${event.extendedProps.description}<br>`;
+                }
+                if (event.extendedProps.meetingLink) {
+                    html += `<strong>회의 링크:</strong> <a href="${event.extendedProps.meetingLink}" target="_blank">${event.extendedProps.meetingLink}</a><br>`;
+                }
+            }
+            html += `<strong>시작:</strong> ${new Date(event.start).toLocaleString('ko-KR')}<br>`;
+            html += `<strong>종료:</strong> ${new Date(event.end).toLocaleString('ko-KR')}<br>`;
+            if (event.extendedProps && currentUser && event.extendedProps.organizerId == currentUser.id) {
+                html += `<button class='btn btn-primary mt-3 me-2' onclick='editMeetingFromModal(${event.id})'>수정</button>`;
+                html += `<button class='btn btn-danger mt-3' onclick='cancelMeetingFromModal(${event.id})'>회의 취소</button>`;
+            }
+            document.getElementById('meetingDetailBody').innerHTML = html;
+            modal.show();
+        }
+
+        function editMeetingFromModal(meetingId) {
+            // 상세 모달 닫기
+            const detailModal = bootstrap.Modal.getInstance(document.getElementById('meetingDetailModal'));
+            if (detailModal) detailModal.hide();
+            axios.get(`/api/meetings/${meetingId}`)
+                .then(res => {
+                    const meeting = res.data;
+                    document.getElementById('createMeetingForm').reset();
+                    document.getElementById('meetingTitle').value = meeting.title;
+                    document.getElementById('meetingDescription').value = meeting.description || '';
+                    document.getElementById('startTime').value = meeting.startTime.replace(' ', 'T').slice(0, 16);
+                    document.getElementById('endTime').value = meeting.endTime.replace(' ', 'T').slice(0, 16);
+                    // 참석자
+                    const participantsSelect = document.getElementById('participants');
+                    Array.from(participantsSelect.options).forEach(opt => {
+                        opt.selected = meeting.participants && meeting.participants.some(p => p.id == opt.value);
+                    });
+                    // 회의실
+                    document.getElementById('meetingRoom').value = meeting.roomId || '';
+                    // 회의 유형
+                    document.getElementById('meetingType').value = meeting.type || 'IN_PERSON';
+                    // 회의 링크
+                    document.getElementById('meetingLink').value = meeting.meetingLink || '';
+                    // 장비 정보 표시
+                    const equipmentDiv = document.getElementById('roomEquipmentInfo');
+                    if (meeting.room && meeting.room.equipmentList && meeting.room.equipmentList.length > 0) {
+                        equipmentDiv.innerHTML = `<strong>장비:</strong> ${meeting.room.equipmentList.join(', ')}`;
+                    } else if (meeting.room && meeting.room.equipment) {
+                        equipmentDiv.innerHTML = `<strong>장비:</strong> ${meeting.room.equipment}`;
+                    } else {
+                        equipmentDiv.innerHTML = '<strong>장비:</strong> 없음';
+                    }
+                    // 수정 모드 표시
+                    document.getElementById('createMeetingForm').dataset.editId = meeting.id;
+                    // 모달 오픈
+                    const modal = new bootstrap.Modal(document.getElementById('createMeetingModal'));
+                    modal.show();
+                });
+        }
+
+        function cancelMeetingFromModal(meetingId) {
+            bootstrap.Modal.getInstance(document.getElementById('meetingDetailModal')).hide();
+            cancelMeeting(meetingId);
+        }
+
+        function logout() {
+            if (confirm('로그아웃하시겠습니까?')) {
+                window.location.href = '/login';
+            }
+        }
+
+        // Event listeners
+        document.getElementById('meetingType').addEventListener('change', function() {
+            const linkDiv = document.getElementById('meetingLinkDiv');
+            if (this.value === 'ONLINE' || this.value === 'HYBRID') {
+                linkDiv.style.display = 'block';
+            } else {
+                linkDiv.style.display = 'none';
+            }
+        });
+
+        document.getElementById('confirmCancelBtn').onclick = function() {
+            if (!meetingToCancel) return;
+            axios.delete(`/api/meetings/${meetingToCancel}`)
+                .then(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('cancelMeetingModal')).hide();
+                    loadMyMeetings();
+                    loadDashboardData();
+                    if (calendar) calendar.refetchEvents();
+                    
+                    // 회의실 현황 화면이 활성화되어 있으면 새로고침
+                    if (document.getElementById('meetingRoomsSection').classList.contains('active')) {
+                        loadMeetingRoomsData();
+                    }
+                    
+                    showToast('회의가 취소되었습니다.', 'success');
+                })
+                .catch(error => {
+                    showToast('회의 취소 중 오류가 발생했습니다: ' + (error.response?.data?.message || ''), 'danger');
+                });
+            meetingToCancel = null;
+        };
+
+        // 로그인 체크 함수
+        async function checkLogin() {
+            try {
+                const res = await axios.get('/api/users/me');
+                currentUser = res.data;
+                return true;
+            } catch (e) {
+                window.location.href = '/login';
+                return false;
+            }
+        }
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            checkLogin().then(() => {
+                initializeApp();
+            });
+        });
+
+        // 회의실 등록 모달 열기
+        function showCreateMeetingRoom() {
+            const modal = new bootstrap.Modal(document.getElementById('createMeetingRoomModal'));
+            document.getElementById('createMeetingRoomForm').reset();
+            modal.show();
+        }
+
+        // 회의실 등록
+        function createMeetingRoom() {
+            const data = {
+                name: document.getElementById('roomName').value,
+                location: document.getElementById('roomDescription').value,
+                capacity: document.getElementById('roomCapacity').value,
+                equipment: document.getElementById('roomEquipment').value
+            };
+            // 중복 체크
+            axios.get('/api/meeting-rooms')
+                .then(res => {
+                    if (res.data.some(room => room.name === data.name)) {
+                        showToast('이미 존재하는 회의실 이름입니다.', 'danger');
+                        return;
+                    }
+                    actuallyCreateMeetingRoom(data);
+                });
+        }
+
+        function actuallyCreateMeetingRoom(data) {
+            axios.post('/api/meeting-rooms', data)
+                .then(() => {
+                    showToast('회의실이 등록되었습니다.', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('createMeetingRoomModal')).hide();
+                    if (document.getElementById('dashboardSection').classList.contains('active')) {
+                        loadDashboardData();
+                    }
+                    if (document.getElementById('meetingRoomsSection').classList.contains('active')) {
+                        showMeetingRooms();
+                    }
+                    loadMeetingRoomsData();
+                    loadMeetingRooms();
+                })
+                .catch(() => showToast('회의실 등록에 실패했습니다.', 'danger'));
+        }
+
+        // 회의실 선택 시 장비 정보 표시
+        document.addEventListener('DOMContentLoaded', function() {
+            const meetingRoomSelect = document.getElementById('meetingRoom');
+            if (meetingRoomSelect) {
+                meetingRoomSelect.addEventListener('change', function() {
+                    const roomId = this.value;
+                    const equipmentDiv = document.getElementById('roomEquipmentInfo');
+                    if (!equipmentDiv) return;
+                    if (!roomId) {
+                        equipmentDiv.innerHTML = '';
+                        return;
+                    }
+                    axios.get(`/api/meeting-rooms/${roomId}`)
+                        .then(res => {
+                            const room = res.data;
+                            equipmentDiv.innerHTML = room.equipmentList && room.equipmentList.length > 0
+                                ? `<strong>장비:</strong> ${room.equipmentList.join(', ')}`
+                                : '';
+                        });
+                });
+            }
+        });
+
+        // 토스트 메시지 함수
+        function showToast(msg, type) {
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-bg-${type} border-0 position-fixed top-0 start-50 translate-middle-x mt-3 shadow`;
+            toast.role = 'alert';
+            toast.style.zIndex = 9999;
+            toast.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+            document.body.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast, { delay: 2000 });
+            bsToast.show();
+            toast.addEventListener('hidden.bs.toast', () => toast.remove());
+        }
+
+        // 회의실 활성화/비활성화 토글 함수
+        function toggleRoomActive(roomId, isActive) {
+            axios.patch(`/api/meeting-rooms/${roomId}/active?isActive=${isActive}`)
+                .then(() => {
+                    showToast('상태가 변경되었습니다.', 'success');
+                    loadMeetingRoomsData();
+                })
+                .catch(() => showToast('상태 변경에 실패했습니다.', 'danger'));
+        }
+    </script>
+</body>
+</html> 

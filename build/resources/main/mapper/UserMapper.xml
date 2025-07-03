@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cursormeeting.cursor_meeting_demo.mapper.UserMapper">
+
+    <resultMap id="UserResultMap" type="com.cursormeeting.cursor_meeting_demo.domain.User">
+        <id property="id" column="id"/>
+        <result property="email" column="email"/>
+        <result property="password" column="password"/>
+        <result property="name" column="name"/>
+        <result property="phoneNumber" column="phone_number"/>
+        <result property="role" column="role"/>
+        <result property="teamId" column="team_id"/>
+        <result property="googleCalendarId" column="google_calendar_id"/>
+        <result property="outlookCalendarId" column="outlook_calendar_id"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="UserResultMap">
+        <![CDATA[
+        SELECT u.*, t.name as team_name, t.description as team_description
+        FROM users u
+        LEFT JOIN teams t ON u.team_id = t.id
+        ORDER BY u.created_at DESC
+        ]]>
+    </select>
+
+    <select id="findById" resultMap="UserResultMap">
+        <![CDATA[
+        SELECT u.*, t.name as team_name, t.description as team_description
+        FROM users u
+        LEFT JOIN teams t ON u.team_id = t.id
+        WHERE u.id = #{id}
+        ]]>
+    </select>
+
+    <select id="findByEmail" resultMap="UserResultMap">
+        <![CDATA[
+        SELECT u.*, t.name as team_name, t.description as team_description
+        FROM users u
+        LEFT JOIN teams t ON u.team_id = t.id
+        WHERE u.email = #{email}
+        ]]>
+    </select>
+
+    <select id="findByTeamId" resultMap="UserResultMap">
+        <![CDATA[
+        SELECT u.*, t.name as team_name, t.description as team_description
+        FROM users u
+        LEFT JOIN teams t ON u.team_id = t.id
+        WHERE u.team_id = #{teamId}
+        ORDER BY u.name
+        ]]>
+    </select>
+
+    <select id="findByIds" resultMap="UserResultMap">
+        <![CDATA[
+        SELECT u.*, t.name as team_name, t.description as team_description
+        FROM users u
+        LEFT JOIN teams t ON u.team_id = t.id
+        WHERE u.id IN
+        ]]>
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        <![CDATA[
+        ORDER BY u.name
+        ]]>
+    </select>
+
+    <insert id="insert" parameterType="com.cursormeeting.cursor_meeting_demo.domain.User" useGeneratedKeys="true" keyProperty="id">
+        <![CDATA[
+        INSERT INTO users (email, password, name, phone_number, role, team_id, google_calendar_id, outlook_calendar_id)
+        VALUES (#{email}, #{password}, #{name}, #{phoneNumber}, #{role}, #{teamId}, #{googleCalendarId}, #{outlookCalendarId})
+        ]]>
+    </insert>
+
+    <update id="update" parameterType="com.cursormeeting.cursor_meeting_demo.domain.User">
+        <![CDATA[
+        UPDATE users
+        SET email = #{email},
+            password = #{password},
+            name = #{name},
+            phone_number = #{phoneNumber},
+            role = #{role},
+            team_id = #{teamId},
+            google_calendar_id = #{googleCalendarId},
+            outlook_calendar_id = #{outlookCalendarId},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+        ]]>
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM users WHERE id = #{id}
+    </delete>
+
+</mapper> 

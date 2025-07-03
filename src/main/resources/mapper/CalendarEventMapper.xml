@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cursormeeting.cursor_meeting_demo.mapper.CalendarEventMapper">
+
+    <resultMap id="CalendarEventResultMap" type="com.cursormeeting.cursor_meeting_demo.domain.CalendarEvent">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="startTime" column="start_time"/>
+        <result property="endTime" column="end_time"/>
+        <result property="eventType" column="event_type"/>
+        <result property="isAllDay" column="is_all_day"/>
+        <result property="location" column="location"/>
+        <result property="externalEventId" column="external_event_id"/>
+        <result property="source" column="source"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="CalendarEventResultMap">
+        SELECT * FROM calendar_events ORDER BY start_time DESC
+    </select>
+
+    <select id="findById" resultMap="CalendarEventResultMap">
+        SELECT * FROM calendar_events WHERE id = #{id}
+    </select>
+
+    <select id="findByUserId" resultMap="CalendarEventResultMap">
+        SELECT * FROM calendar_events WHERE user_id = #{userId} ORDER BY start_time
+    </select>
+
+    <select id="findByTimeRange" resultMap="CalendarEventResultMap">
+        <![CDATA[
+        SELECT * FROM calendar_events 
+        WHERE user_id = #{userId}
+        AND start_time >= #{startTime} AND end_time <= #{endTime}
+        ORDER BY start_time
+        ]]>
+    </select>
+
+    <select id="findByUserIdsAndTimeRange" resultMap="CalendarEventResultMap">
+        <![CDATA[
+        SELECT * FROM calendar_events 
+        WHERE user_id IN
+        ]]>
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        <![CDATA[
+        AND start_time >= #{startTime} AND end_time <= #{endTime}
+        ORDER BY start_time
+        ]]>
+    </select>
+
+    <insert id="insert" parameterType="com.cursormeeting.cursor_meeting_demo.domain.CalendarEvent" useGeneratedKeys="true" keyProperty="id">
+        <![CDATA[
+        INSERT INTO calendar_events (user_id, title, description, start_time, end_time, 
+                                    event_type, is_all_day, location, external_event_id, source)
+        VALUES (#{userId}, #{title}, #{description}, #{startTime}, #{endTime},
+                #{eventType}, #{isAllDay}, #{location}, #{externalEventId}, #{source})
+        ]]>
+    </insert>
+
+    <update id="update" parameterType="com.cursormeeting.cursor_meeting_demo.domain.CalendarEvent">
+        <![CDATA[
+        UPDATE calendar_events
+        SET user_id = #{userId},
+            title = #{title},
+            description = #{description},
+            start_time = #{startTime},
+            end_time = #{endTime},
+            event_type = #{eventType},
+            is_all_day = #{isAllDay},
+            location = #{location},
+            external_event_id = #{externalEventId},
+            source = #{source},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+        ]]>
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM calendar_events WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteByExternalId">
+        DELETE FROM calendar_events WHERE external_event_id = #{externalEventId}
+    </delete>
+
+</mapper> 

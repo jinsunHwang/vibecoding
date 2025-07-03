@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-CursorMeetingDemoApplication<cursor-meeting-demo>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.cursormeeting.cursor_meeting_demo.CursorMeetingDemoApplication",
+            "projectName": "cursor-meeting-demo",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

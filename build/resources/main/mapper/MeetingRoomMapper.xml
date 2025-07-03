@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cursormeeting.cursor_meeting_demo.mapper.MeetingRoomMapper">
+
+    <resultMap id="MeetingRoomResultMap" type="com.cursormeeting.cursor_meeting_demo.domain.MeetingRoom">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="location" column="location"/>
+        <result property="capacity" column="capacity"/>
+        <result property="equipment" column="equipment"/>
+        <result property="isAvailable" column="is_active"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="MeetingRoomResultMap">
+        SELECT * FROM meeting_rooms ORDER BY name
+    </select>
+
+    <select id="findById" resultMap="MeetingRoomResultMap">
+        SELECT * FROM meeting_rooms WHERE id = #{id}
+    </select>
+
+    <select id="findAvailable" resultMap="MeetingRoomResultMap">
+        SELECT * FROM meeting_rooms WHERE is_active = true ORDER BY name
+    </select>
+
+    <select id="findByCapacity" resultMap="MeetingRoomResultMap">
+        SELECT * FROM meeting_rooms WHERE capacity >= #{minCapacity} ORDER BY capacity
+    </select>
+
+    <insert id="insert" parameterType="com.cursormeeting.cursor_meeting_demo.domain.MeetingRoom" useGeneratedKeys="true" keyProperty="id">
+        <![CDATA[
+        INSERT INTO meeting_rooms (name, location, capacity, is_active, created_at, updated_at)
+        VALUES (#{name}, #{location}, #{capacity}, #{isAvailable}, NOW(), NOW())
+        ]]>
+    </insert>
+
+    <update id="update" parameterType="com.cursormeeting.cursor_meeting_demo.domain.MeetingRoom">
+        <![CDATA[
+        UPDATE meeting_rooms
+        SET name = #{name},
+            location = #{location},
+            capacity = #{capacity},
+            is_active = #{isAvailable},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+        ]]>
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM meeting_rooms WHERE id = #{id}
+    </delete>
+
+    <select id="findCurrentMeetings" resultType="com.cursormeeting.cursor_meeting_demo.domain.Meeting">
+        <![CDATA[
+        SELECT m.* FROM meetings m
+        WHERE m.room_id = #{roomId}
+        AND m.start_time <= #{currentTime}
+        AND m.end_time > #{currentTime}
+        AND m.status = 'SCHEDULED'
+        ]]>
+    </select>
+
+    <select id="findEquipmentByRoomId" resultType="string">
+        SELECT equipment FROM room_equipment WHERE room_id = #{roomId}
+    </select>
+
+    <insert id="insertRoomEquipment">
+        INSERT INTO room_equipment (room_id, equipment) VALUES (#{roomId}, #{equipment})
+    </insert>
+
+    <update id="updateIsActive">
+        UPDATE meeting_rooms SET is_active = #{isActive}, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+</mapper> 

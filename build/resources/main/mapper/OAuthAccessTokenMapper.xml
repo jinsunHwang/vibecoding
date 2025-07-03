@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cursormeeting.cursor_meeting_demo.mapper.OAuthAccessTokenMapper">
+    <select id="selectByUserId" resultType="com.cursormeeting.cursor_meeting_demo.domain.OAuthAccessToken">
+        SELECT * FROM oauth_access_token WHERE user_id = #{userId}
+    </select>
+    <insert id="insert" parameterType="com.cursormeeting.cursor_meeting_demo.domain.OAuthAccessToken">
+        INSERT INTO oauth_access_token (user_id, access_token, refresh_token, expires_at, created_at, updated_at)
+        VALUES (#{userId}, #{accessToken}, #{refreshToken}, #{expiresAt}, NOW(), NOW())
+    </insert>
+    <update id="update" parameterType="com.cursormeeting.cursor_meeting_demo.domain.OAuthAccessToken">
+        UPDATE oauth_access_token
+        SET access_token = #{accessToken}, refresh_token = #{refreshToken}, expires_at = #{expiresAt}, updated_at = NOW()
+        WHERE user_id = #{userId}
+    </update>
+</mapper> 

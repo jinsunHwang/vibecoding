@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cursormeeting.cursor_meeting_demo.mapper.TeamMapper">
+
+    <resultMap id="TeamResultMap" type="com.cursormeeting.cursor_meeting_demo.domain.Team">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="TeamResultMap">
+        SELECT * FROM teams ORDER BY created_at DESC
+    </select>
+
+    <select id="findById" resultMap="TeamResultMap">
+        SELECT * FROM teams WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.cursormeeting.cursor_meeting_demo.domain.Team" useGeneratedKeys="true" keyProperty="id">
+        <![CDATA[
+        INSERT INTO teams (name, description)
+        VALUES (#{name}, #{description})
+        ]]>
+    </insert>
+
+    <update id="update" parameterType="com.cursormeeting.cursor_meeting_demo.domain.Team">
+        <![CDATA[
+        UPDATE teams
+        SET name = #{name},
+            description = #{description},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+        ]]>
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM teams WHERE id = #{id}
+    </delete>
+
+</mapper> 

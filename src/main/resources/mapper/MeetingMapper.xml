@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cursormeeting.cursor_meeting_demo.mapper.MeetingMapper">
+
+    <resultMap id="MeetingResultMap" type="com.cursormeeting.cursor_meeting_demo.domain.Meeting">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="organizerId" column="organizer_id"/>
+        <result property="roomId" column="room_id"/>
+        <result property="startTime" column="start_time"/>
+        <result property="endTime" column="end_time"/>
+        <result property="status" column="status"/>
+        <result property="type" column="type"/>
+        <result property="meetingLink" column="meeting_link"/>
+        <result property="isRecurring" column="is_recurring"/>
+        <result property="recurrencePattern" column="recurrence_pattern"/>
+        <result property="recurrenceEndDate" column="recurrence_end_date"/>
+        <result property="meetingNotes" column="meeting_notes"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <association property="room" javaType="com.cursormeeting.cursor_meeting_demo.domain.MeetingRoom">
+            <id property="id" column="room_id"/>
+            <result property="name" column="room_name"/>
+            <result property="location" column="room_location"/>
+            <result property="capacity" column="room_capacity"/>
+        </association>
+    </resultMap>
+
+    <resultMap id="MeetingWithRoomAndEquipmentResultMap" type="com.cursormeeting.cursor_meeting_demo.domain.Meeting">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="organizerId" column="organizer_id"/>
+        <result property="roomId" column="room_id"/>
+        <result property="startTime" column="start_time"/>
+        <result property="endTime" column="end_time"/>
+        <result property="status" column="status"/>
+        <result property="type" column="type"/>
+        <result property="meetingLink" column="meeting_link"/>
+        <result property="isRecurring" column="is_recurring"/>
+        <result property="recurrencePattern" column="recurrence_pattern"/>
+        <result property="recurrenceEndDate" column="recurrence_end_date"/>
+        <result property="meetingNotes" column="meeting_notes"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <association property="room" javaType="com.cursormeeting.cursor_meeting_demo.domain.MeetingRoom">
+            <id property="id" column="room_id"/>
+            <result property="name" column="room_name"/>
+            <result property="location" column="room_location"/>
+            <result property="capacity" column="room_capacity"/>
+            <collection property="equipmentList" ofType="string" column="id" select="findEquipmentByRoomId"/>
+        </association>
+    </resultMap>
+
+    <select id="findAll" resultMap="MeetingResultMap">
+        <![CDATA[
+        SELECT m.*, 
+               u.name as organizer_name, u.email as organizer_email,
+               r.name as room_name, r.location as room_location, r.capacity as room_capacity
+        FROM meetings m
+        LEFT JOIN users u ON m.organizer_id = u.id
+        LEFT JOIN meeting_rooms r ON m.room_id = r.id
+        ORDER BY m.start_time DESC
+        ]]>
+    </select>
+
+    <select id="findById" resultMap="MeetingResultMap">
+        <![CDATA[
+        SELECT m.*, 
+               u.name as organizer_name, u.email as organizer_email,
+               r.name as room_name, r.location as room_location, r.capacity as room_capacity
+        FROM meetings m
+        LEFT JOIN users u ON m.organizer_id = u.id
+        LEFT JOIN meeting_rooms r ON m.room_id = r.id
+        WHERE m.id = #{id}
+        ]]>
+    </select>
+
+    <select id="findByOrganizerId" resultMap="MeetingResultMap">
+        <![CDATA[
+        SELECT m.*, 
+               u.name as organizer_name, u.email as organizer_email,
+               r.name as room_name, r.location as room_location, r.capacity as room_capacity
+        FROM meetings m
+        LEFT JOIN users u ON m.organizer_id = u.id
+        LEFT JOIN meeting_rooms r ON m.room_id = r.id
+        WHERE m.organizer_id = #{organizerId}
+        ORDER BY m.start_time DESC
+        ]]>
+    </select>
+
+    <select id="findByParticipantId" resultMap="MeetingResultMap">
+        <![CDATA[
+        SELECT m.*, 
+               u.name as organizer_name, u.email as organizer_email,
+               r.name as room_name, r.location as room_location, r.capacity as room_capacity
+        FROM meetings m
+        LEFT JOIN users u ON m.organizer_id = u.id
+        LEFT JOIN meeting_rooms r ON m.room_id = r.id
+        INNER JOIN meeting_participants mp ON m.id = mp.meeting_id
+        WHERE mp.user_id = #{participantId}
+        ORDER BY m.start_time DESC
+        ]]>
+    </select>
+
+    <select id="findByRoomId" resultMap="MeetingResultMap">
+        <![CDATA[
+        SELECT m.*, 
+               u.name as organizer_name, u.email as organizer_email,
+               r.name as room_name, r.location as room_location, r.capacity as room_capacity
+        FROM meetings m
+        LEFT JOIN users u ON m.organizer_id = u.id
+        LEFT JOIN meeting_rooms r ON m.room_id = r.id
+        WHERE m.room_id = #{roomId}
+        ORDER BY m.start_time DESC
+        ]]>
+    </select>
+
+    <select id="findByTimeRange" resultMap="MeetingResultMap">
+        <![CDATA[
+        SELECT m.*, 
+               u.name as organizer_name, u.email as organizer_email,
+               r.name as room_name, r.location as room_location, r.capacity as room_capacity
+        FROM meetings m
+        LEFT JOIN users u ON m.organizer_id = u.id
+        LEFT JOIN meeting_rooms r ON m.room_id = r.id
+        WHERE m.start_time >= #{startTime} AND m.end_time <= #{endTime}
+        ORDER BY m.start_time
+        ]]>
+    </select>
+
+    <select id="findConflicts" resultMap="MeetingResultMap">
+        <![CDATA[
+        SELECT * FROM meetings
+        WHERE room_id = #{roomId}
+          AND status != 'CANCELLED'
+          AND (start_time < #{endTime} AND end_time > #{startTime})
+        ]]>
+    </select>
+
+    <insert id="insert" parameterType="com.cursormeeting.cursor_meeting_demo.domain.Meeting" useGeneratedKeys="true" keyProperty="id">
+        <![CDATA[
+        INSERT INTO meetings (
+          title, description, organizer_id, room_id, start_time, end_time, 
+          status, type, meeting_link, is_recurring, recurrence_pattern, 
+          recurrence_end_date, meeting_notes, created_at, updated_at
+        ) VALUES (
+          #{title}, #{description}, #{organizerId}, #{roomId}, #{startTime}, #{endTime},
+          #{status}, #{type}, #{meetingLink}, #{isRecurring}, #{recurrencePattern},
+          #{recurrenceEndDate}, #{meetingNotes},
+          NOW(), NOW()
+        )
+        ]]>
+    </insert>
+
+    <update id="update" parameterType="com.cursormeeting.cursor_meeting_demo.domain.Meeting">
+        <![CDATA[
+        UPDATE meetings
+        SET title = #{title},
+            description = #{description},
+            organizer_id = #{organizerId},
+            room_id = #{roomId},
+            start_time = #{startTime},
+            end_time = #{endTime},
+            status = #{status},
+            type = #{type},
+            meeting_link = #{meetingLink},
+            is_recurring = #{isRecurring},
+            recurrence_pattern = #{recurrencePattern},
+            recurrence_end_date = #{recurrenceEndDate},
+            meeting_notes = #{meetingNotes},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+        ]]>
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM meetings WHERE id = #{id}
+    </delete>
+
+    <insert id="insertParticipant">
+        INSERT INTO meeting_participants (meeting_id, user_id)
+        VALUES (#{meetingId}, #{userId})
+    </insert>
+
+    <delete id="deleteParticipants">
+        DELETE FROM meeting_participants WHERE meeting_id = #{meetingId}
+    </delete>
+
+    <select id="findByIdWithRoomEquipment" resultMap="MeetingWithRoomAndEquipmentResultMap">
+        SELECT m.*, 
+               r.name as room_name, r.location as room_location, r.capacity as room_capacity,
+               e.equipment, e.room_id as equipment_room_id
+        FROM meetings m
+        LEFT JOIN meeting_rooms r ON m.room_id = r.id
+        LEFT JOIN room_equipment e ON r.id = e.room_id
+        WHERE m.id = #{id}
+    </select>
+
+    <select id="findAllWithRoomEquipment" resultMap="MeetingWithRoomAndEquipmentResultMap">
+        SELECT m.*, 
+               r.name as room_name, r.location as room_location, r.capacity as room_capacity,
+               e.equipment, e.room_id as equipment_room_id
+        FROM meetings m
+        LEFT JOIN meeting_rooms r ON m.room_id = r.id
+        LEFT JOIN room_equipment e ON r.id = e.room_id
+        ORDER BY m.start_time DESC
+    </select>
+
+    <select id="findByRoomIdWithRoomEquipment" resultMap="MeetingWithRoomAndEquipmentResultMap">
+        SELECT m.*, 
+               r.name as room_name, r.location as room_location, r.capacity as room_capacity,
+               e.equipment, e.room_id as equipment_room_id
+        FROM meetings m
+        LEFT JOIN meeting_rooms r ON m.room_id = r.id
+        LEFT JOIN room_equipment e ON r.id = e.room_id
+        WHERE m.room_id = #{roomId}
+        ORDER BY m.start_time DESC
+    </select>
+
+    <select id="findEquipmentByRoomId" resultType="string">
+        SELECT equipment FROM room_equipment WHERE room_id = #{roomId}
+    </select>
+
+</mapper> 
