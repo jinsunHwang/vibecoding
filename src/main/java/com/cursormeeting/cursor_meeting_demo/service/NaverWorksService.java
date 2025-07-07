@@ -21,6 +21,8 @@ import com.cursormeeting.cursor_meeting_demo.domain.OAuthAccessToken;
 import com.cursormeeting.cursor_meeting_demo.mapper.OAuthAccessTokenMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.time.LocalDateTime;
+import com.cursormeeting.cursor_meeting_demo.domain.JwtToken;
+import com.cursormeeting.cursor_meeting_demo.mapper.JwtTokenMapper;
 
 @Service
 public class NaverWorksService {
@@ -56,6 +58,9 @@ public class NaverWorksService {
     
     @Autowired
     private OAuthAccessTokenMapper oAuthAccessTokenMapper;
+    
+    @Autowired
+    private JwtTokenMapper jwtTokenMapper;
     
     /**
      * 봇 토큰 발급
@@ -104,19 +109,24 @@ public class NaverWorksService {
      */
     public boolean sendMessage(String accessToken, String channelId, String content) {
         try {
+            // channelId를 고정값으로 사용
+            channelId = "e5cab4f0-1f94-a0fb-f05b-2de2aa100ea7";
             String url = BASE_URL + "/v1.0/bots/" + botId + "/channels/" + channelId + "/messages";
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + accessToken);
 
+            Map<String, Object> contentObj = new HashMap<>();
+            contentObj.put("type", "text");
+            contentObj.put("text", content);
+
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("content", content);
-            requestBody.put("contentType", "text");
+            requestBody.put("content", contentObj);
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
             ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
 
-            return response.getStatusCode() == HttpStatus.OK;
+            return response.getStatusCode() == HttpStatus.OK || response.getStatusCode() == HttpStatus.CREATED;
         } catch (Exception e) {
             logger.error("메시지 전송 실패", e);
             return false;
@@ -192,11 +202,17 @@ public class NaverWorksService {
     }
     
     /**
-     * JWT 방식 access_token 발급 (getServerToken 스타일, assertion/파라미터/로깅 명확화)
+     * JWT access_token을 userId 기준으로 캐싱/재사용하며 만료 시 재발급하는 메서드
      */
-    public String getJwtAccessToken() {
+    public String getJwtAccessToken(String userId) {
+        JwtToken token = jwtTokenMapper.selectByUserId(userId);
+        LocalDateTime now = LocalDateTime.now();
+        if (token != null && token.getExpiresAt() != null && now.isBefore(token.getExpiresAt())) {
+            logger.info("[JWT] DB에서 유효 access_token 반환 (userId: {}): {}", userId, token.getAccessToken());
+            return token.getAccessToken();
+        }
+        // 만료 or 없음 → 새로 발급
         try {
-            // 1. private key 파일 읽기
             String privateKeyPEM = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(jwtPrivateKeyPath)));
             privateKeyPEM = privateKeyPEM.replace("-----BEGIN PRIVATE KEY-----", "")
                     .replace("-----END PRIVATE KEY-----", "")
@@ -206,10 +222,9 @@ public class NaverWorksService {
             KeyFactory kf = KeyFactory.getInstance("RSA");
             PrivateKey privateKey = kf.generatePrivate(keySpec);
 
-            // 2. JWT 생성 (헤더/페이로드 명확히)
-            long now = System.currentTimeMillis();
-            Date iat = new Date(now);
-            Date exp = new Date(now + 30 * 60 * 1000); // 30분
+            long nowMillis = System.currentTimeMillis();
+            Date iat = new Date(nowMillis);
+            Date exp = new Date(nowMillis + 30 * 60 * 1000); // 30분
             String jwt = Jwts.builder()
                     .setHeaderParam("alg", "RS256")
                     .setHeaderParam("typ", "JWT")
@@ -222,12 +237,13 @@ public class NaverWorksService {
                     .signWith(privateKey, SignatureAlgorithm.RS256)
                     .compact();
 
-            // 3. 파라미터 셋팅
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
             params.add("assertion", jwt);
             params.add("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
+            params.add("client_id", clientId);
+            params.add("client_secret", clientSecret);
+            params.add("scope", "bot bot.message bot.read calendar calendar.read");
 
-            // 4. 토큰 요청
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
@@ -237,9 +253,27 @@ public class NaverWorksService {
             logger.info("[JWT] access_token 응답: {} {}", response.getStatusCode(), response.getBody());
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                Object token = response.getBody().get("access_token");
-                logger.info("[JWT] access_token 발급 성공: {}", token);
-                return token != null ? token.toString() : null;
+                String accessToken = (String) response.getBody().get("access_token");
+                String refreshToken = (String) response.getBody().get("refresh_token");
+                String scope = (String) response.getBody().get("scope");
+                String tokenType = (String) response.getBody().get("token_type");
+                Integer expiresIn = response.getBody().get("expires_in") != null ? Integer.parseInt(response.getBody().get("expires_in").toString()) : 1800;
+                LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(expiresIn);
+
+                JwtToken newToken = new JwtToken();
+                newToken.setUserId(userId);
+                newToken.setAccessToken(accessToken);
+                newToken.setRefreshToken(refreshToken);
+                newToken.setScope(scope);
+                newToken.setTokenType(tokenType);
+                newToken.setExpiresAt(expiresAt);
+                if (token == null) {
+                    jwtTokenMapper.insert(newToken);
+                } else {
+                    jwtTokenMapper.update(newToken);
+                }
+                logger.info("[JWT] access_token DB 저장/업데이트 완료 (userId: {})", userId);
+                return accessToken;
             } else {
                 logger.error("[JWT] access_token 발급 실패: {}", response);
             }
@@ -266,5 +300,21 @@ public class NaverWorksService {
     public String getAccessTokenByUserId(String userId) {
         OAuthAccessToken token = oAuthAccessTokenMapper.selectByUserId(userId);
         return token != null ? token.getAccessToken() : null;
+    }
+
+    public boolean sendFlexMessage(String accessToken, String userId, Map<String, Object> requestBody) {
+        try {
+            String channelId = "e5cab4f0-1f94-a0fb-f05b-2de2aa100ea7";
+            String url = BASE_URL + "/v1.0/bots/" + botId + "/channels/" + channelId + "/messages";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", "Bearer " + accessToken);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            return response.getStatusCode() == HttpStatus.OK || response.getStatusCode() == HttpStatus.CREATED;
+        } catch (Exception e) {
+            logger.error("Flex 메시지 전송 실패", e);
+            return false;
+        }
     }
 } 

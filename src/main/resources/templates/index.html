@@ -443,6 +443,7 @@
         let currentUser = null;
         let meetingToCancel = null;
         let lastSuggestions = [];
+        let lastFindParticipants = [];
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', async function() {
@@ -983,6 +984,7 @@
 
         function findAvailableTimes() {
             const participants = Array.from(document.getElementById('findParticipants').selectedOptions).map(option => option.value);
+            lastFindParticipants = participants; // 참석자 id 저장
             if (participants.length === 0) {
                 showToast('참석자를 선택해주세요.', 'warning');
                 return;
@@ -1025,7 +1027,6 @@
             if (preferred === 'MORNING' || preferred === 'AFTERNOON') {
                 filtered = suggestions.filter(s => s.preferredTime === preferred);
             } else if (preferred === '') {
-                // 상관없음: 전체(오전+오후)
                 filtered = suggestions.filter(s => s.preferredTime === 'MORNING' || s.preferredTime === 'AFTERNOON');
             } else {
                 container.innerHTML = '<div class="alert alert-warning">해당 조건에 맞는 가능한 시간이 없습니다.</div>';
@@ -1062,7 +1063,7 @@
                                     `<div class="text-muted small"><i class="fas fa-tools"></i> ${suggestion.room.equipment}</div>` : ''
                                 }
                             </div>
-                            <button class="btn btn-primary btn-sm" onclick="selectTimeSlot('${suggestion.startTime}', '${suggestion.endTime}', ${suggestion.room ? suggestion.room.id : 'null'})">
+                            <button class="btn btn-primary btn-sm" onclick="selectTimeSlot('${suggestion.startTime}', '${suggestion.endTime}', ${suggestion.room ? suggestion.room.id : 'null'}, '${lastFindParticipants.join(',')}')">
                                 <i class="fas fa-check"></i> 선택
                             </button>
                         </div>
@@ -1073,25 +1074,37 @@
             resultDiv.style.display = 'block';
         }
 
-        function selectTimeSlot(startTime, endTime, meetingRoomId) {
+        function selectTimeSlot(startTime, endTime, meetingRoomId, participantsCsv) {
             bootstrap.Modal.getInstance(document.getElementById('findTimeModal')).hide();
             showCreateMeeting();
-            
             // ISO 문자열을 datetime-local 형식으로 변환
             const startDate = new Date(startTime);
             const endDate = new Date(endTime);
-            
-            const startTimeStr = startDate.toISOString().slice(0, 16);
-            const endTimeStr = endDate.toISOString().slice(0, 16);
-            
-            document.getElementById('startTime').value = startTimeStr;
-            document.getElementById('endTime').value = endTimeStr;
-            
+            document.getElementById('startTime').value = toDatetimeLocalString(startDate);
+            document.getElementById('endTime').value = toDatetimeLocalString(endDate);
             if (meetingRoomId && meetingRoomId !== 'null') {
                 document.getElementById('meetingRoom').value = meetingRoomId;
             }
-            
+            // 참석자 세팅
+            let participants = [];
+            if (participantsCsv) {
+                participants = participantsCsv.split(',').filter(x => x);
+            }
+            const participantsSelect = document.getElementById('participants');
+            Array.from(participantsSelect.options).forEach(opt => {
+                opt.selected = participants.includes(opt.value) || participants.includes(String(opt.value));
+            });
             showToast('선택한 시간이 회의 예약 폼에 적용되었습니다.', 'success');
+        }
+
+        // datetime-local 포맷 변환 함수 추가
+        function toDatetimeLocalString(date) {
+            const pad = n => n < 10 ? '0' + n : n;
+            return date.getFullYear() + '-' +
+                pad(date.getMonth() + 1) + '-' +
+                pad(date.getDate()) + 'T' +
+                pad(date.getHours()) + ':' +
+                pad(date.getMinutes());
         }
 
         // Utility functions
