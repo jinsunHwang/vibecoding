@@ -8,7 +8,6 @@
 
 - **네이버웍스 챗봇 연동**: 네이버웍스 메시지/버튼/Flex 메시지 기반 대화형 회의 예약
 - **JWT 기반 인증**: 네이버웍스 API 연동을 위한 JWT 토큰 발급 및 관리
-- **OAuth2 인증**: 사용자 인증 및 토큰 관리
 - **회의실/회의 예약**: 웹 UI 및 챗봇 모두에서 회의실 예약, 중복 체크, 참석자 관리, 회의 유형(대면/온라인/하이브리드) 지원
 - **추천 시간대**: 참석자/회의실/선호시간대 기반 추천 시간대 자동 제안
 - **DB 기반 관리**: 사용자, 회의실, 회의, 토큰 등 모든 정보 DB 관리
@@ -20,7 +19,7 @@
 - **Backend**: Java 17, Spring Boot, Spring Security, MyBatis, JWT, MariaDB
 - **Frontend**: HTML5, CSS3, Bootstrap, FullCalendar, JavaScript(ES6), Axios
 - **네이버웍스 API**: 챗봇, 메시지, Flex 메시지, JWT 인증, 캘린더, 사용자 정보 등
-- **AI 활용**: OpenAI GPT 기반 프롬프트 설계 및 대화형 UX 개선, 코드 자동화, 추천 로직 설계 지원
+- **AI 활용**: OpenAI GPT, Cursor AI IDE 기반 프롬프트 설계 및 대화형 UX 개선, 코드 자동화, 추천 로직 설계 지원
 
 ## AI 활용 내역
 
@@ -77,4 +76,4 @@ cd ngrok
 
 ---
 
-본 프로젝트는 AI(예: ChatGPT) 기반 코드 자동화, 대화형 UX 설계, 프롬프트 기반 챗봇 설계 등 최신 AI 활용 사례를 적극 반영하였습니다.
+본 프로젝트는 AI(예: ChatGPT, Cursor AI IDE) 기반 코드 자동화, 대화형 UX 설계, 프롬프트 기반 챗봇 설계 등 최신 AI 활용 사례를 적극 반영하였습니다.
