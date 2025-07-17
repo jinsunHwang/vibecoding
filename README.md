@@ -18,7 +18,8 @@
 
 - **Backend**: Java 17, Spring Boot, Spring Security, MyBatis, JWT, MariaDB
 - **Frontend**: HTML5, CSS3, Bootstrap, FullCalendar, JavaScript(ES6), Axios
-- **네이버웍스 API**: 챗봇, 메시지, Flex 메시지, JWT 인증, 캘린더, 사용자 정보 등
+- **네이버웍스 API**: 챗봇, 메시지, Flex 메시지, JWT 인증 등
+- **구글 캘린더 API**: 캘린더
 - **AI 활용**: OpenAI GPT, Cursor AI IDE 기반 프롬프트 설계 및 대화형 UX 개선, 코드 자동화, 추천 로직 설계 지원
 
 ## AI 활용 내역
